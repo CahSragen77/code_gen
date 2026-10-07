@@ -6,10 +6,10 @@
   <title>QR & Barcode Studio</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- bwip-js untuk Linear Barcode (EAN-13, EAN-8, ITF-14) -->
+  <!-- bwip-js untuk Barcode 1D (EAN-13, EAN-8, ITF-14) -->
   <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.0.4/dist/bwip-js-min.js"></script>
-  <!-- qr-code-styling untuk Custom QR Code dengan Logo -->
-  <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.8/lib/qr-code-styling.js"></script>
+  <!-- qr-code-styling via CDN jsDelivr (Lebih stabil) -->
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
@@ -106,11 +106,9 @@
 
   <!-- JavaScript Logic -->
   <script>
-    // State Aplikasi
     let currentLogoUrl = null;
     let qrStylingInstance = null;
 
-    // DOM Elements
     const codeTypeSelect = document.getElementById('codeType');
     const dataInput = document.getElementById('dataInput');
     const sizeSlider = document.getElementById('sizeSlider');
@@ -124,16 +122,19 @@
     const helperText = document.getElementById('helperText');
     const downloadPngBtn = document.getElementById('downloadPngBtn');
 
-    // Inisialisasi QR Code Styling Engine
-    qrStylingInstance = new QRCodeStyling({
-      width: 300,
-      height: 300,
-      dotsOptions: { color: "#000000", type: "rounded" },
-      backgroundOptions: { color: "#ffffff" },
-      imageOptions: { hideBackgroundDots: true, imageSize: 0.3, margin: 4 }
-    });
+    // Inisialisasi QRCodeStyling dengan pengecekan aman
+    function initQrEngine() {
+      if (typeof QRCodeStyling !== 'undefined') {
+        qrStylingInstance = new QRCodeStyling({
+          width: 300,
+          height: 300,
+          dotsOptions: { color: "#000000", type: "rounded" },
+          backgroundOptions: { color: "#ffffff" },
+          imageOptions: { hideBackgroundDots: true, imageSize: 0.3, margin: 4 }
+        });
+      }
+    }
 
-    // Validasi & Helper Teks
     function updateHelperText(type) {
       const helpers = {
         'ean13': 'EAN-13 membutuhkan 12 atau 13 digit angka.',
@@ -147,7 +148,6 @@
       helperText.textContent = helpers[type] || '';
     }
 
-    // Render Engine Utama
     function generateCode() {
       const type = codeTypeSelect.value;
       const text = dataInput.value.trim();
@@ -164,10 +164,16 @@
       const isQrFamily = ['qrcode', 'microqr', 'rmqr', 'frameqr'].includes(type);
 
       if (isQrFamily) {
-        // Tampilkan container QR, sembunyikan Canvas Barcode 1D
         barcodeCanvas.classList.add('hidden');
         qrCanvas.classList.remove('hidden');
         logoContainer.classList.remove('hidden');
+
+        if (typeof QRCodeStyling === 'undefined') {
+          showError('Gagal memuat pustaka QR Code. Pastikan terhubung ke internet.');
+          return;
+        }
+
+        if (!qrStylingInstance) initQrEngine();
 
         try {
           qrStylingInstance.update({
@@ -183,13 +189,16 @@
           showError('Gagal menggenerate QR Code: ' + err.message);
         }
       } else {
-        // Tampilkan Canvas Barcode 1D, sembunyikan QR
         qrCanvas.classList.add('hidden');
         barcodeCanvas.classList.remove('hidden');
         logoContainer.classList.add('hidden');
 
+        if (typeof bwipjs === 'undefined') {
+          showError('Gagal memuat pustaka Barcode. Pastikan terhubung ke internet.');
+          return;
+        }
+
         try {
-          // Render 1D Barcode menggunakan bwip-js
           bwipjs.toCanvas(barcodeCanvas, {
             bcid: type,
             text: text,
@@ -210,7 +219,6 @@
       errorMessage.classList.remove('hidden');
     }
 
-    // Event Listeners
     codeTypeSelect.addEventListener('change', (e) => {
       updateHelperText(e.target.value);
       generateCode();
@@ -244,7 +252,9 @@
       const isQrFamily = ['qrcode', 'microqr', 'rmqr', 'frameqr'].includes(type);
 
       if (isQrFamily) {
-        qrStylingInstance.download({ name: 'qr-code', extension: 'png' });
+        if (qrStylingInstance) {
+          qrStylingInstance.download({ name: 'qr-code', extension: 'png' });
+        }
       } else {
         const link = document.createElement('a');
         link.download = `${type}-barcode.png`;
@@ -253,9 +263,12 @@
       }
     });
 
-    // Inisialisasi awal saat halaman dimuat
-    updateHelperText(codeTypeSelect.value);
-    generateCode();
+    // Run Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      initQrEngine();
+      updateHelperText(codeTypeSelect.value);
+      generateCode();
+    });
   </script>
 </body>
 </html>
