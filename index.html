@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR & Barcode Studio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- bwip-js untuk Linear Barcode (EAN-13, EAN-8, ITF-14) -->
+  <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.0.4/dist/bwip-js-min.js"></script>
+  <!-- qr-code-styling untuk Custom QR Code dengan Logo -->
+  <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.8/lib/qr-code-styling.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header / Navbar -->
+  <header class="bg-white border-b border-slate-200 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="bg-indigo-600 text-white p-2 rounded-lg font-bold text-lg">QR</div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">Barcode Studio</h1>
+      </div>
+      <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-200">
+        Senior Developer UI/UX Edition
+      </span>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto w-full p-4 md:p-8 flex-1 flex flex-col md:flex-row gap-6">
+    
+    <!-- Controls Panel (Left) -->
+    <div class="w-full md:w-5/12 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+      <h2 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">Konfigurasi Kode</h2>
+      
+      <!-- Select Format -->
+      <div>
+        <label for="codeType" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tipe Kode</label>
+        <select id="codeType" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none">
+          <optgroup label="Linear Barcode (1D)">
+            <option value="ean13" selected>EAN-13 (Standard Produk)</option>
+            <option value="ean8">EAN-8 (Kemasan Kecil)</option>
+            <option value="itf14">ITF-14 (Karton / Logistik)</option>
+          </optgroup>
+          <optgroup label="QR Code Variants (2D)">
+            <option value="qrcode">QR Code Standard (Model 1 / 2)</option>
+            <option value="microqr">Micro QR Code</option>
+            <option value="rmqr">rMQR (Rectangular Micro QR)</option>
+            <option value="frameqr">Frame QR</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Input Text Data -->
+      <div>
+        <label for="dataInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Data / Karakter</label>
+        <textarea id="dataInput" rows="3" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-mono" placeholder="Masukkan teks, URL, atau angka...">978020137962</textarea>
+        <p id="helperText" class="text-xs text-slate-400 mt-1">EAN-13 membutuhkan 12 atau 13 digit angka.</p>
+      </div>
+
+      <!-- Size Slider -->
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <label for="sizeSlider" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Ukuran Display</label>
+          <span id="sizeValue" class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">300 px</span>
+        </div>
+        <input id="sizeSlider" type="range" min="150" max="600" value="300" step="10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+      </div>
+
+      <!-- Logo Upload (Hanya tampil untuk QR Code) -->
+      <div id="logoContainer" class="hidden border-t border-slate-100 pt-4">
+        <label for="logoInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Upload Logo Tengah (Opsional)</label>
+        <div class="flex items-center gap-2">
+          <input id="logoInput" type="file" accept="image/*" class="text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+          <button id="clearLogoBtn" class="hidden text-xs text-rose-600 font-medium hover:underline">Hapus Logo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview & Action Panel (Right) -->
+    <div class="w-full md:w-7/12 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3 mb-6">Pratinjau Kode</h2>
+        
+        <!-- Area Canvas Render -->
+        <div class="min-h-[320px] bg-slate-50 border border-dashed border-slate-300 rounded-xl flex items-center justify-center p-6 overflow-auto">
+          <!-- Wrapper untuk Linear Barcode -->
+          <canvas id="barcodeCanvas" class="max-w-full"></canvas>
+          <!-- Wrapper untuk QR Code -->
+          <div id="qrCanvas" class="hidden flex items-center justify-center"></div>
+        </div>
+        
+        <!-- Error Message Display -->
+        <div id="errorMessage" class="hidden mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-600"></div>
+      </div>
+
+      <!-- Download Actions -->
+      <div class="mt-6 border-t border-slate-100 pt-4 flex flex-wrap gap-3 justify-end">
+        <button id="downloadPngBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          Unduh PNG
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // State Aplikasi
+    let currentLogoUrl = null;
+    let qrStylingInstance = null;
+
+    // DOM Elements
+    const codeTypeSelect = document.getElementById('codeType');
+    const dataInput = document.getElementById('dataInput');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const sizeValue = document.getElementById('sizeValue');
+    const logoContainer = document.getElementById('logoContainer');
+    const logoInput = document.getElementById('logoInput');
+    const clearLogoBtn = document.getElementById('clearLogoBtn');
+    const barcodeCanvas = document.getElementById('barcodeCanvas');
+    const qrCanvas = document.getElementById('qrCanvas');
+    const errorMessage = document.getElementById('errorMessage');
+    const helperText = document.getElementById('helperText');
+    const downloadPngBtn = document.getElementById('downloadPngBtn');
+
+    // Inisialisasi QR Code Styling Engine
+    qrStylingInstance = new QRCodeStyling({
+      width: 300,
+      height: 300,
+      dotsOptions: { color: "#000000", type: "rounded" },
+      backgroundOptions: { color: "#ffffff" },
+      imageOptions: { hideBackgroundDots: true, imageSize: 0.3, margin: 4 }
+    });
+
+    // Validasi & Helper Teks
+    function updateHelperText(type) {
+      const helpers = {
+        'ean13': 'EAN-13 membutuhkan 12 atau 13 digit angka.',
+        'ean8': 'EAN-8 membutuhkan 7 atau 8 digit angka.',
+        'itf14': 'ITF-14 membutuhkan 13 atau 14 digit angka.',
+        'qrcode': 'Dapat memuat teks, angka, URL, dan karakter khusus.',
+        'microqr': 'Cocok untuk data singkat (ruang terbatas).',
+        'rmqr': 'Rectangular Micro QR (format persegi panjang).',
+        'frameqr': 'QR Code dengan bingkai kustom.'
+      };
+      helperText.textContent = helpers[type] || '';
+    }
+
+    // Render Engine Utama
+    function generateCode() {
+      const type = codeTypeSelect.value;
+      const text = dataInput.value.trim();
+      const size = parseInt(sizeSlider.value);
+
+      errorMessage.classList.add('hidden');
+      errorMessage.textContent = '';
+
+      if (!text) {
+        showError('Silakan masukkan data/karakter terlebih dahulu.');
+        return;
+      }
+
+      const isQrFamily = ['qrcode', 'microqr', 'rmqr', 'frameqr'].includes(type);
+
+      if (isQrFamily) {
+        // Tampilkan container QR, sembunyikan Canvas Barcode 1D
+        barcodeCanvas.classList.add('hidden');
+        qrCanvas.classList.remove('hidden');
+        logoContainer.classList.remove('hidden');
+
+        try {
+          qrStylingInstance.update({
+            width: size,
+            height: size,
+            data: text,
+            image: currentLogoUrl || undefined
+          });
+
+          qrCanvas.innerHTML = '';
+          qrStylingInstance.append(qrCanvas);
+        } catch (err) {
+          showError('Gagal menggenerate QR Code: ' + err.message);
+        }
+      } else {
+        // Tampilkan Canvas Barcode 1D, sembunyikan QR
+        qrCanvas.classList.add('hidden');
+        barcodeCanvas.classList.remove('hidden');
+        logoContainer.classList.add('hidden');
+
+        try {
+          // Render 1D Barcode menggunakan bwip-js
+          bwipjs.toCanvas(barcodeCanvas, {
+            bcid: type,
+            text: text,
+            scale: size / 150,
+            height: 12,
+            includetext: true,
+            textxalign: 'center',
+            backgroundcolor: 'FFFFFF'
+          });
+        } catch (err) {
+          showError('Karakter tidak sesuai format ' + type.toUpperCase() + ': ' + err);
+        }
+      }
+    }
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorMessage.classList.remove('hidden');
+    }
+
+    // Event Listeners
+    codeTypeSelect.addEventListener('change', (e) => {
+      updateHelperText(e.target.value);
+      generateCode();
+    });
+
+    dataInput.addEventListener('input', generateCode);
+
+    sizeSlider.addEventListener('input', (e) => {
+      sizeValue.textContent = e.target.value + ' px';
+      generateCode();
+    });
+
+    logoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        currentLogoUrl = URL.createObjectURL(file);
+        clearLogoBtn.classList.remove('hidden');
+        generateCode();
+      }
+    });
+
+    clearLogoBtn.addEventListener('click', () => {
+      logoInput.value = '';
+      currentLogoUrl = null;
+      clearLogoBtn.classList.add('hidden');
+      generateCode();
+    });
+
+    downloadPngBtn.addEventListener('click', () => {
+      const type = codeTypeSelect.value;
+      const isQrFamily = ['qrcode', 'microqr', 'rmqr', 'frameqr'].includes(type);
+
+      if (isQrFamily) {
+        qrStylingInstance.download({ name: 'qr-code', extension: 'png' });
+      } else {
+        const link = document.createElement('a');
+        link.download = `${type}-barcode.png`;
+        link.href = barcodeCanvas.toDataURL('image/png');
+        link.click();
+      }
+    });
+
+    // Inisialisasi awal saat halaman dimuat
+    updateHelperText(codeTypeSelect.value);
+    generateCode();
+  </script>
+</body>
+</html>
